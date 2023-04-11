@@ -3,25 +3,141 @@ import csv
 import os
 import io
 import datetime
-
+import re
 import PyPDF2
-
-import SRSLDA
+import fitz
 
 from fpdf import FPDF
 import dash_table
 from dash import Dash, html, dcc, callback, Input, Output, dash_table as dt, dash
 import plotly.express as px
 from dash.exceptions import PreventUpdate
-
+import dash_bootstrap_components as dbc
 import resources.utility
 import plotly.graph_objects as go
 import pandas as pd
 from PyPDF2 import PdfFileReader
 from flask import Flask, send_from_directory
 from urllib.parse import quote as urlquote
-import SRSLDA
+from Preprocessing import Preprocess
+from LDA_SRS import SrsLdaModel
+from Cosine import CosineSimilarity
+from gensim import corpora
+from TestFile import test
+from dash.dependencies import Input, Output, State
 
+
+class pdfReader:
+    def __init__(self, file_path: str) -> str:
+        self.file_path = file_path
+
+    def PDF_one_pager(self) -> str:
+        """A function that returns a one line string of the
+            pdfReader object.
+
+            Parameters:
+            file_path(str): The file path to the pdf.
+
+            Returns:
+            one_page_pdf (str): A one line string of the pdf.
+
+        """
+        content = ""
+        p = open(self.file_path, "rb")
+        pdf = PyPDF2.PdfFileReader(p)
+        num_pages = pdf.numPages
+        for i in range(0, num_pages):
+            content += pdf.getPage(i).extractText() + "\n"
+        content = " ".join(content.replace(u"\xa0", " ").strip().split())
+        page_number_removal = r"\d{1,3} of \d{1,3}"
+        page_number_removal_pattern = re.compile(page_number_removal, re.IGNORECASE)
+        content = re.sub(page_number_removal_pattern, '', content)
+
+        return content
+
+    def pdf_reader(self) -> str:
+        """A function that can read .pdf formatted files
+            and returns a python readable pdf.
+
+            Returns:
+            read_pdf: A python readable .pdf file.
+        """
+        opener = open(self.file_path, 'rb')
+        read_pdf = PyPDF2.PdfFileReader(opener)
+
+        return read_pdf
+
+    def pdf_info(self) -> dict:
+        """A function which returns an information dictionary
+        of an object.
+
+        Returns:
+        dict(pdf_info_dict): A dictionary containing the meta
+        data of the object.
+        """
+        opener = open(self.file_path, 'rb')
+        read_pdf = PyPDF2.PdfFileReader(opener)
+        pdf_info_dict = {}
+        for key, value in read_pdf.documentInfo.items():
+            pdf_info_dict[re.sub('/', "", key)] = value
+        return pdf_info_dict
+
+    def pdf_dictionary(self) -> dict:
+        """A function which returns a dictionary of
+            the object where the keys are the pages
+            and the text within the pages are the
+            values.
+
+            Returns:
+            dict(pdf_dict): A dictionary of the object within the
+            pdfReader class.
+        """
+        opener = open(self.file_path, 'rb')
+        # try:
+        #    file_path = os.path.exists(self.file_path)
+        #    file_path = True
+        # break
+        # except ValueError:
+        #   print('Unidentifiable file path')
+        read_pdf = PyPDF2.PdfFileReader(opener)
+        length = read_pdf.numPages
+        pdf_dict = {}
+        for i in range(length):
+            page = read_pdf.getPage(i)
+            text = page.extract_text()
+            pdf_dict[i] = text
+            return pdf_dict
+
+    def get_publish_date(self) -> str:
+        """A function of which accepts an information dictionray of an object
+            in the pdfReader class and returns the creation date of the
+            object (if applicable).
+
+            Parameters:
+            self (obj): An object of the pdfReader class
+
+            Returns:
+            pub_date (str): The publication date which is assumed to be the
+            creation date (if applicable).
+        """
+        info_dict_pdf = self.pdf_info()
+        pub_date = 'None'
+        try:
+            publication_date = info_dict_pdf['CreationDate']
+            publication_date = datetime.date.strptime(publication_date.replace("'", ""), "D:%Y%m%d%H%M%S%z")
+            pub_date = publication_date.isoformat()[0:10]
+        except:
+            pass
+        return str(pub_date)
+
+
+
+
+# Code above found on this link: https://towardsdatascience.com/pdf-parsing-dashboard-with-plotly-dash-256bf944f536
+
+
+
+directory = 'C:/Users/uriah/Desktop/Jairens-Site-master'
 
 upload = "/project/app_uploaded_files"
 
@@ -43,6 +159,7 @@ def download(path):
     return send_from_directory(upload, path, as_attachment=True)
 
 
+
 app.layout = url_bar_and_content_div
 
 home = html.Div(children=html.Center(children=[
@@ -50,9 +167,13 @@ home = html.Div(children=html.Center(children=[
     html.H3(children='''
         Website Description
     '''),
+
+
+
     html.Div(children=[
         html.H5('''Step 1: Pick SRS File to Upload'''),
         dcc.Upload(
+            #dbc.Spinner(html.Div(id="loading-output")),
             id='upload-data',
             children=html.Div([
                 'Drag and Drop or ',
@@ -69,6 +190,7 @@ home = html.Div(children=html.Center(children=[
                 'margin': '10px'
             },
         ),
+
         html.H5('''Step 2: Choose Algorithm to Use'''),
         dcc.RadioItems(['LDA Algorithm', 'LSA Algorithm']),
         html.H5('''Step 3: Choose Number of Topics'''),
@@ -76,7 +198,8 @@ home = html.Div(children=html.Center(children=[
         dcc.Link(html.Button('Submit', id='submit-val', n_clicks=0, style={'margin-top': '25px'}), href='/'),
         html.Div(id='button-container'),
         html.Div(children=html.Center(children=[
-            html.Div(children=[dcc.Graph(id="bar_chart1"),
+            html.Div(children=[
+                dcc.Graph(id="bar_chart1"),
                                html.Div(
                                    id='tableDiv',
                                    children=[]
@@ -85,6 +208,7 @@ home = html.Div(children=html.Center(children=[
 
         ], style={'max-width': '85%',
                   'margin': 'auto'})),
+        html.Div(id='output-datatable'),
         html.Div(id='output-data-upload'),
     ])
 ], style={'max-width': '85%',
@@ -96,32 +220,104 @@ app.validation_layout = html.Div([
 
 ])
 
-
-def parse_contents(contents,filename,date):
-    if 'pdf' in filename:
-        pdfFileObj = open(filename, 'rb')
-        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-        pdfWriter = PyPDF2.PdfFileWriter()
-        newFile = open('WebsitePDF.pdf', 'wb')
-        for page in range(pdfReader.numPages):
-            pageObj = pdfReader.getPage(page)
-            pdfWriter.addPage(pageObj)
-        pdfWriter.write(newFile)
-        pageCount = pdfReader.numPages
-        pdfFileObj.close()
-        newFile.close()
+textPreprocessing = Preprocess()
+cosine_sim_test = CosineSimilarity()
 
 
 
-@app.callback(Output('button-container', 'children'),
-              [Input('submit-val','n_clicks')])
-def get_csv(n_clicks):
-    if not n_clicks:
-        raise PreventUpdate
-    script_fn = 'SRSLDA.py'
+#@app.callback(
+#    Output("loading-output", "children"), [Input("upload-data", "loading_state")]
+#)
+
+#def parse_contents(contents, filename, date):
+  #  content_type, content_string = contents.split(',')
+  #  decoded = base64.b64decode(content_string)
 
 
-    exec(open(script_fn).read())
+
+
+#def LDA(self):
+ #   lda_model = SrsLdaModel(5, textPreprocessing.get_corpus(), textPreprocessing.get_dictionary(), textPreprocessing.get_text())
+  #  lda_model.create_models()
+   # lda_model.select_best_model(5)
+    #print("LDA MODEL: " + str(lda_model.get_selected_lda_model()))
+    #print("LDA COHERENCE SCRORE:" + str(lda_model.get_selected_model_coherence_score()))
+    #lda_model.save_lda_model("testmodel")
+    #lda_model.save_model_topic_terms("test_terms.txt")
+    #cosine_sim_test.init_lda_data(lda_model.get_selected_lda_model())
+    #cosine_sim_test.lda_calculate_cos_sim()
+    #cosine_sim_test.save_lda_cos_results("thisfile.csv")
+
+
+
+def parse_contents(contents, filename, date):
+    content_type, content_string = contents.split(',')
+
+    decoded = base64.b64decode(content_string)
+    #test.open_pdf_stream(decoded)
+
+    try:
+        if 'pdf' in filename:
+            html.center('You have uploaded a file')
+            pdf = fitz.Document(stream=io.BytesIO(decoded))
+            textPreprocessing = Preprocess()
+
+            textPreprocessing.open_pdf_stream(decoded)
+            textPreprocessing.process_pdf()
+            textPreprocessing.form_n_grams()
+            textPreprocessing.form_topic_model_inputs()
+
+            lda_model = SrsLdaModel(5, textPreprocessing.get_corpus(), textPreprocessing.get_dictionary(),
+                                    textPreprocessing.get_text())
+            lda_model.create_models()
+            lda_model.select_best_model(5)
+            print("LDA MODEL: " + str(lda_model.get_selected_lda_model()))
+            print("LDA COHERENCE SCRORE:" + str(lda_model.get_selected_model_coherence_score()))
+            lda_model.save_lda_model("testmodel")
+            lda_model.save_model_topic_terms("test_terms.txt")
+
+            cosine_sim_test = CosineSimilarity()
+
+            cosine_sim_test.init_lda_data(lda_model.get_selected_lda_model())
+            cosine_sim_test.lda_calculate_cos_sim()
+            cosine_sim_test.save_lda_cos_results("thisfile.csv")
+
+    except Exception as e:
+        print(e)
+        return html.Div([
+            'There was an error processing this file.'
+        ])
+
+    return html.Div([
+        html.H5(filename),
+        html.H6(datetime.datetime.fromtimestamp(date)),
+        html.Hr(),  # horizontal line
+
+        # For debugging, display the raw contents provided by the web browser
+        html.Div('Raw Content'),
+        html.Pre(contents[0:200] + '...', style={
+            'whiteSpace': 'pre-wrap',
+            'wordBreak': 'break-all'
+        })
+    ])
+
+    #with open("TestFile.py") as f:
+      #  exec(f.read())
+
+#------------------------------Old code may come back later--------------------------------------------------
+
+#@app.callback(Output('output-data-upload', 'children'),
+ #             Input('upload-data', 'contents'),
+  #            State('upload-data', 'filename'),
+   #           State('upload-data', 'last_modified'))
+#def update_output(list_of_contents, list_of_names, list_of_dates):
+ #   if list_of_contents is not None:
+  #      children = [
+   #         parse_contents(c, n, d) for c, n, d in
+    #        zip(list_of_contents, list_of_names, list_of_dates)]
+     #   return children
+
+#--------------------------------Old code may come back later-------------------------------------------------
 
 #@app.callback(Output('upload-data', 'children'),
 #          Input('submit-val', 'n_clicks'))
@@ -146,7 +342,12 @@ def display_page(pathname):
 @callback(Output("bar_chart1", 'figure'),
           Input("topic_input", 'value'))
 def createGraph(topic):
-    d = resources.utility.format_results("resources/results.csv")
+    if os.path.exists('thisfile.csv') == True:
+        d = resources.utility.format_results('thisfile.csv')
+    else:
+        d = resources.utility.format_results("resources/results.csv")
+
+
     # gets the key values as list for x axis in graph
     x_axis_capecs = list(d.keys())
     # gets cosine similarities from specific topic
@@ -277,3 +478,4 @@ def createTable(topic):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+
