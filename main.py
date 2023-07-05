@@ -29,8 +29,8 @@ from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.units import inch
 from reportlab.pdfgen.canvas import Canvas
 from pathlib import Path
-
-
+import numpy as np
+import random
 
 
 
@@ -115,33 +115,8 @@ class pdfReader:
             pdf_dict[i] = text
             return pdf_dict
 
-    def get_publish_date(self) -> str:
-        """A function of which accepts an information dictionray of an object
-            in the pdfReader class and returns the creation date of the
-            object (if applicable).
-
-            Parameters:
-            self (obj): An object of the pdfReader class
-
-            Returns:
-            pub_date (str): The publication date which is assumed to be the
-            creation date (if applicable).
-        """
-        info_dict_pdf = self.pdf_info()
-        pub_date = 'None'
-        try:
-            publication_date = info_dict_pdf['CreationDate']
-            publication_date = datetime.date.strptime(publication_date.replace("'", ""), "D:%Y%m%d%H%M%S%z")
-            pub_date = publication_date.isoformat()[0:10]
-        except:
-            pass
-        return str(pub_date)
-
-
-
 
 # Code above found on this link: https://towardsdatascience.com/pdf-parsing-dashboard-with-plotly-dash-256bf944f536
-
 
 
 directory = 'C:/Users/uriah/Desktop/Jairens-Site-master'
@@ -167,16 +142,159 @@ def download(path):
 
 
 
+
+def from_rec_engine(lda_top_results):
+    """
+    This function is imported from LDA_Cosine.py (recommendation engine). It takes a list of the recommended CAPEC ids across all 10 topics along with thier
+    corresponding cosine similarity values in the form of a list of tuples and reformatted it into a list of just the CAPEC ids.
+
+    ARGS:
+        lda_top_results: a list of tuples where the first element is the CAPEC ID and the second is corresponding cosine similarity value
+
+    RETURNS:
+        CAPECids: a list of just the first 50 CAPEC ids from lda_top_results list
+    """
+
+    formatlist = [id[0] for id in lda_top_results[:50]]
+    CAPECids = pd.DataFrame(formatlist)
+    return CAPECids
+
+#the path for the two dataframes below may be different on your local computer
+file = pd.read_csv('thisfile.csv')
+first_values = file.iloc[:, 0].str.extract(r"\((\d+)").astype(int).values.flatten().tolist()
+
+df = pd.read_csv('resources/Comprehensive CAPEC Dictionary.csv')
+capec_ids = pd.DataFrame(first_values)
+
+filtered_df = df[df['ID'].isin(capec_ids[0].tolist())]
+filtered_df = filtered_df.reset_index(drop=True)
+print("this is the conversion dataframe")
+print(filtered_df)
+
+
+color = {'Very High': 'red',
+             'High': 'maroon',
+             'Medium': 'indigo',
+             'Low': 'blue',
+             'Very Low': 'turquoise',
+             'None': 'lightblue',
+             np.nan: 'lightblue'}
+severity_color = [color[val] for val in df['Typical Severity']]
+weights = {'High': 35,
+           'Medium': 27,
+           'Low': 18,
+           np.nan: 18}
+weight_size = [weights[val] for val in df['Likelihood Of Attack']]
+
+
+@app.callback(
+    Output('word-cloud', 'figure'),
+    Input('dropdown', 'value')
+)
+def update_figure(numofIDs):
+    """
+    This function is a callback function that is triggered when a user selects a value from the dropdown menu. The value that is selected
+    via dropdown menu is equivalent to the number of CAPEC IDs that are going to be displayed on the word cloud. This funciton updates the
+    word cloud to show the correct amount of CAPEC IDs.
+
+    ARGS:
+        numofIDs: a integer (default value = 20) chosen by the user via dropdown menu. Can be a value 20-50.
+
+    RETURNS:
+        fig: the updated word cloud with the correct number of CAPEC IDs
+
+    """
+
+    layout = go.Layout( {'xaxis': {'showgrid': False, 'showticklabels': False, 'zeroline': False},
+                    'yaxis': {'showgrid': False, 'showticklabels': False, 'zeroline': False}},
+                    width =765,
+                    height =765 )
+
+#cids is going to dictate how many CAPEC ids are shown
+#range(num) represents range of values to be randomly selected from, reducing the chances of overlapping points.
+
+  #  d = resources.utility.format_results("thisfile.csv")
+  #  capecs = list(d.keys())
+   # csv_description_1 = {}
+   # csv_severity_1 = {}
+   # csv_likelihood = {}
+
+
+
+   # with open("resources/1000.csv", "r", encoding='utf8') as csv_file:
+    #    reader = csv.reader(csv_file)
+     #   for row in reader:
+      #      csv_severity_1 = {row[0]: row[7] for row in reader}
+
+
+   # try:
+   #     severity_color = [color[val] for val in csv_severity_1]
+   # except KeyError as e:
+      #  print('key error', e)
+#
+
+
+    # dictionary of corresponding font sizes , then formated into a list
+
+
+
+
+    #with open("resources/1000.csv", "r", encoding='utf8') as csv_file:
+     #   reader = csv.reader(csv_file)
+      #  for row in reader:
+     #       csv_likelihood = {row[0]: row[6] for row in reader}
+   # try:
+
+     #   weight_size = [weights[val] for val in csv_likelihood]
+     #   if weight_size is None:
+      #      PreventUpdate
+    #except KeyError as e:
+    #    print('key error', e)
+
+    #with open("resources/1000.csv", "r", encoding='utf8') as csv_file:
+      #  reader = csv.reader(csv_file)
+      #  for row in reader:
+       #     csv_description_1 = {row[0]: row[1] for row in reader}
+
+
+    try:
+        fig = go.Figure(data=go.Scatter(x=random.sample(list(range(650)), numofIDs),
+                                        y=random.sample(list(range(650)), numofIDs),
+                                        mode='text',
+                                        text=filtered_df['ID'],
+                                        hovertext=filtered_df['Name'],
+                                        hoverinfo='text',
+                                        textfont={'size': weight_size,
+                                                  'color': severity_color}),
+                        layout=layout)
+        return fig
+    except UnboundLocalError as e:
+        print('Unbound Local Error', e)
+
+
+
+
+
+
+
+
+
+
+fig = update_figure(20)
+
 app.layout = url_bar_and_content_div
 
+
+#cids is going to dictate how many CAPEC ids are shown
+#range(num) represents range of values to be randomly selected from, reducing the chances of overlapping points.
+
+
 home = html.Div(children=html.Center(children=[
+    dcc.Link("Go to Word Cloud", href="/page-2"),
     html.H1(children='Website Title'),
     html.H3(children='''
         Website Description
     '''),
-
-
-
     html.Div(children=[
         html.H5('''Step 1: Pick SRS File to Upload'''),
         dcc.Upload(
@@ -197,7 +315,7 @@ home = html.Div(children=html.Center(children=[
                 'margin': '10px'
             },
         ),
-
+        ]),
         html.H5('''Step 2: Choose Algorithm to Use'''),
         dcc.RadioItems(['LDA Algorithm', 'LSA Algorithm']),
         html.H5('''Step 3: Choose Number of Topics'''),
@@ -213,19 +331,81 @@ home = html.Div(children=html.Center(children=[
                                )
                                ])
 
-        ], style={'max-width': '85%',
+        ],
+
+        style={'max-width': '85%',
                   'margin': 'auto'})),
         html.Div(id='output-datatable'),
         html.Div(id='output-data-upload'),
-    ])
-], style={'max-width': '85%',
+
+],
+
+    style={'max-width': '85%',
           'margin': 'auto'}))
+
+word_cloud_layout = html.Div([
+
+dcc.Link("Go back", href="/page-1"),
+
+html.P("Select the number of CAPEC IDs"),
+    dcc.Dropdown(
+        id='dropdown',
+        options= [
+        {'label': '20', 'value': 20},
+        {'label': '30', 'value': 30},
+        {'label': '40', 'value': 40},
+        {'label': '50', 'value': 50}
+        ], value=20
+    ),
+
+    html.Div([
+            dcc.Graph(
+                id='word-cloud',
+                figure=fig,
+                clickData=None,
+                style={'width': '50%', 'display': 'inline-block'}
+            ),
+            html.Div([
+                html.P('Word Cloud Legend', style={'color': 'black', 'fontSize': 16}),
+                html.Div([
+                    html.P(children='Severity:', style={'color': 'black', 'margin': '0px 10px'}),
+                    html.P('Very High', style={'color': color['Very High'], 'margin': '0px 10px'}),
+                    html.P('High', style={'color': color['High'], 'margin': '0px 10px'}),
+                    html.P('Medium', style={'color': color['Medium'], 'margin': '0px 10px'}),
+                    html.P('Low', style={'color': color['Low'], 'margin': '0px 10px'}),
+                    html.P('Very Low', style={'color': color['Very Low'], 'margin': '0px 10px'}),
+                    html.Br(),
+
+                ], style={'display': 'flex', 'fontSize': 16}),
+                html.Br(),
+                html.Div([
+                    html.P(children='Likelihood of Attack:', style={'color': 'black', 'margin': '0px 10px'}),
+                    html.P('High', style={'color': 'black', 'fontSize': weights['High'], 'margin': '0px 15px'}),
+                    html.P('Medium', style={'color': 'black', 'fontSize': weights['Medium'], 'margin': '0px 15px'}),
+                    html.P('Low', style={'color': 'black', 'fontSize': weights['Low'], 'margin': '0px 15px'}),
+                ], style={'display': 'flex', 'fontSize': 16}),
+                html.Div(id='point-info')
+            ], style={'fontSize': 18, 'width': '50%', 'marginLeft': 40, 'marginTop': 80}
+            )], style={'display': 'flex'})
+])
 
 app.validation_layout = html.Div([
     url_bar_and_content_div,
     home,
-
+    word_cloud_layout,
 ])
+
+@app.callback(Output('page-content', 'children'),
+              [Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/page-1':
+        return home
+    elif pathname == '/page-2':
+        return word_cloud_layout
+    else:
+        # If the URL doesn't match any page, redirect to the default page (Page 1)
+        return dcc.Location(pathname='/page-1', id='dummy')
+
 
 textPreprocessing = Preprocess()
 cosine_sim_test = CosineSimilarity()
@@ -271,7 +451,7 @@ def parse_contents(contents, filename, date):
             # Assume that the user uploaded an excel file
             df = pd.read_excel(io.BytesIO(decoded))
         elif 'pdf' in filename:
-            pdf = pdfReader(directory + '/' + filename)
+            pdf = pdfReader(filename)
             text = pdf.PDF_one_pager()
 
             print("You have uploaded a file")
@@ -307,7 +487,7 @@ def parse_contents(contents, filename, date):
     except Exception as e:
         print(e)
         return html.Div([
-            'There was an error processing this file.'
+            ' '
         ])
 
     return html.Div([
@@ -333,37 +513,14 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
         children = [parse_contents(list_of_contents, list_of_names, list_of_dates)]
         return children
 
-#--------------------------------Old code may come back later-------------------------------------------------
-
-#@app.callback(Output('upload-data', 'children'),
-#          Input('submit-val', 'n_clicks'))
-#def get_csv(contents, filename, date):
-#    website_pdf = FPDF()
-#    website_pdf.add_page()
-#    website_pdf.set_font("Arial",size = 12)
-#    website_pdf.text(10,10,txt=contents)
-#    SRSLDA.pdf = website_pdf
-#    with open('SRSLDA.py') as infile:
-#        exec(infile.read())
-
-
-# Update the index
-@callback(Output('page-content', 'children'),
-          [Input('url', 'pathname')])
-def display_page(pathname):
-    return home
 
 
 
 @callback(Output("bar_chart1", 'figure'),
           Input("topic_input", 'value'))
 def createGraph(topic):
-    if os.path.exists('thisfile.csv') == True:
-        d = resources.utility.format_results('thisfile.csv')
-    else:
-     #   d = resources.utility.format_results("resources/results.csv")
-        print('Failed')
 
+    d = resources.utility.format_results('thisfile.csv')
 
     # gets the key values as list for x axis in graph
     x_axis_capecs = list(d.keys())
@@ -395,6 +552,8 @@ def createGraph(topic):
         "data": data,
         "layout": layout
     }
+
+
 
 
 @callback(Output("tableDiv", 'children'),
