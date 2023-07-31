@@ -31,7 +31,7 @@ from reportlab.pdfgen.canvas import Canvas
 from pathlib import Path
 import numpy as np
 import random
-
+import dash_bootstrap_components as dbc
 
 
 class pdfReader:
@@ -100,12 +100,6 @@ class pdfReader:
             pdfReader class.
         """
         opener = open(self.file_path, 'rb')
-        # try:
-        #    file_path = os.path.exists(self.file_path)
-        #    file_path = True
-        # break
-        # except ValueError:
-        #   print('Unidentifiable file path')
         read_pdf = PyPDF2.PdfFileReader(opener)
         length = read_pdf.numPages
         pdf_dict = {}
@@ -210,52 +204,6 @@ def update_figure(numofIDs):
                     width =765,
                     height =765 )
 
-#cids is going to dictate how many CAPEC ids are shown
-#range(num) represents range of values to be randomly selected from, reducing the chances of overlapping points.
-
-  #  d = resources.utility.format_results("thisfile.csv")
-  #  capecs = list(d.keys())
-   # csv_description_1 = {}
-   # csv_severity_1 = {}
-   # csv_likelihood = {}
-
-
-
-   # with open("resources/1000.csv", "r", encoding='utf8') as csv_file:
-    #    reader = csv.reader(csv_file)
-     #   for row in reader:
-      #      csv_severity_1 = {row[0]: row[7] for row in reader}
-
-
-   # try:
-   #     severity_color = [color[val] for val in csv_severity_1]
-   # except KeyError as e:
-      #  print('key error', e)
-#
-
-
-    # dictionary of corresponding font sizes , then formated into a list
-
-
-
-
-    #with open("resources/1000.csv", "r", encoding='utf8') as csv_file:
-     #   reader = csv.reader(csv_file)
-      #  for row in reader:
-     #       csv_likelihood = {row[0]: row[6] for row in reader}
-   # try:
-
-     #   weight_size = [weights[val] for val in csv_likelihood]
-     #   if weight_size is None:
-      #      PreventUpdate
-    #except KeyError as e:
-    #    print('key error', e)
-
-    #with open("resources/1000.csv", "r", encoding='utf8') as csv_file:
-      #  reader = csv.reader(csv_file)
-      #  for row in reader:
-       #     csv_description_1 = {row[0]: row[1] for row in reader}
-
 
     try:
         fig = go.Figure(data=go.Scatter(x=random.sample(list(range(650)), numofIDs),
@@ -290,8 +238,8 @@ app.layout = url_bar_and_content_div
 
 
 home = html.Div(children=html.Center(children=[
-    dcc.Link("Go to Word Cloud", href="/page-2"),
-    html.H1(children='Website Title'),
+
+    html.H1(children='tool for recommending attack patterns'),
     html.H3(children='''
         Website Description
     '''),
@@ -305,22 +253,40 @@ home = html.Div(children=html.Center(children=[
                 html.A('Select Files')
             ]),
             style={
-                'width': '400px',
+                'width': '200px',
                 'height': '60px',
                 'lineHeight': '60px',
                 'borderWidth': '1px',
                 'borderStyle': 'dashed',
                 'borderRadius': '5px',
                 'textAlign': 'center',
-                'margin': '10px'
+                'margin-top': '40px',
+                'margin-bottom': '40px'
+
             },
+
         ),
+        dbc.Tooltip(
+            "This is where you can upload a PDF of your SRS document",
+            target='upload-data',
+            placement='auto',
+            style={'width' : '200px'},
+        ),
+
+
         ]),
         html.H5('''Step 2: Choose Algorithm to Use'''),
         dcc.RadioItems(['LDA Algorithm', 'LSA Algorithm']),
         html.H5('''Step 3: Choose Number of Topics'''),
         html.Div(dcc.Input(id="topic_input", type='number', placeholder=1, min=1, max=10)),
-        dcc.Link(html.Button('Submit', id='submit-val', n_clicks=0, style={'margin-top': '25px'}), href='/'),
+    dbc.Tooltip(
+        "Use the arrow keys are type in a value to choose a number of topics you want to display",
+        target='topic_input',
+        placement='right',
+        style={'width': '300px'},
+    ),
+        dcc.Link(html.Button('Submit', id='submit-val', n_clicks=0, style={'margin-top': '25px','display' :'inline-block'}), href='/'),
+        dcc.Link("Go to Word Cloud", href="/page-2", style={'display': 'block', 'margin-top': '25px'}),
         html.Div(id='button-container'),
         html.Div(children=html.Center(children=[
             html.Div(children=[
@@ -332,13 +298,14 @@ home = html.Div(children=html.Center(children=[
                                ])
 
         ],
-
         style={'max-width': '85%',
                   'margin': 'auto'})),
         html.Div(id='output-datatable'),
         html.Div(id='output-data-upload'),
 
+
 ],
+
 
     style={'max-width': '85%',
           'margin': 'auto'}))
@@ -376,17 +343,17 @@ html.P("Select the number of CAPEC IDs"),
                     html.P('Very Low', style={'color': color['Very Low'], 'margin': '0px 10px'}),
                     html.Br(),
 
-                ], style={'display': 'flex', 'fontSize': 16}),
+                ], style={'display': 'flex', 'fontSize': 25 }),
                 html.Br(),
                 html.Div([
                     html.P(children='Likelihood of Attack:', style={'color': 'black', 'margin': '0px 10px'}),
                     html.P('High', style={'color': 'black', 'fontSize': weights['High'], 'margin': '0px 15px'}),
                     html.P('Medium', style={'color': 'black', 'fontSize': weights['Medium'], 'margin': '0px 15px'}),
                     html.P('Low', style={'color': 'black', 'fontSize': weights['Low'], 'margin': '0px 15px'}),
-                ], style={'display': 'flex', 'fontSize': 16}),
+                ], style={'display': 'flex', 'fontSize': 16, 'margin': 'auto'}),
                 html.Div(id='point-info')
             ], style={'fontSize': 18, 'width': '50%', 'marginLeft': 40, 'marginTop': 80}
-            )], style={'display': 'flex'})
+            )], style={'display': 'inline-block', 'align':'center'})
 ])
 
 app.validation_layout = html.Div([
@@ -409,31 +376,6 @@ def display_page(pathname):
 
 textPreprocessing = Preprocess()
 cosine_sim_test = CosineSimilarity()
-
-
-
-#@app.callback(
-#    Output("loading-output", "children"), [Input("upload-data", "loading_state")]
-#)
-
-#def parse_contents(contents, filename, date):
-  #  content_type, content_string = contents.split(',')
-  #  decoded = base64.b64decode(content_string)
-
-
-
-
-#def LDA(self):
- #   lda_model = SrsLdaModel(5, textPreprocessing.get_corpus(), textPreprocessing.get_dictionary(), textPreprocessing.get_text())
-  #  lda_model.create_models()
-   # lda_model.select_best_model(5)
-    #print("LDA MODEL: " + str(lda_model.get_selected_lda_model()))
-    #print("LDA COHERENCE SCRORE:" + str(lda_model.get_selected_model_coherence_score()))
-    #lda_model.save_lda_model("testmodel")
-    #lda_model.save_model_topic_terms("test_terms.txt")
-    #cosine_sim_test.init_lda_data(lda_model.get_selected_lda_model())
-    #cosine_sim_test.lda_calculate_cos_sim()
-    #cosine_sim_test.save_lda_cos_results("thisfile.csv")
 
 
 
