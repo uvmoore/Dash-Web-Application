@@ -123,7 +123,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 #server = Flask(__name__)
 #app = Dash(server=server, external_stylesheets=external_stylesheets)
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets))
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
 # assume you have a "long-form" data frame
