@@ -119,8 +119,11 @@ upload = "/project/app_uploaded_files"
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-server = Flask(__name__)
-app = Dash(server=server, external_stylesheets=external_stylesheets)
+#server = Flask(__name__)
+#app = Dash(server=server, external_stylesheets=external_stylesheets)
+
+app = Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
 # assume you have a "long-form" data frame
 # see https://plotly.com/python/px-arguments/ for more options
 
