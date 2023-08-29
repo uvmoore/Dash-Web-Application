@@ -1,4 +1,3 @@
-import frontend
 import base64
 import csv
 import os
@@ -120,12 +119,8 @@ upload = "/project/app_uploaded_files"
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-#server = Flask(__name__)
-#app = Dash(server=server, external_stylesheets=external_stylesheets)
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-server = app.server
-
+server = Flask(__name__)
+app = Dash(server=server, external_stylesheets=external_stylesheets)
 # assume you have a "long-form" data frame
 # see https://plotly.com/python/px-arguments/ for more options
 
@@ -290,7 +285,6 @@ home = html.Div(children=html.Center(children=[
         placement='right',
         style={'width': '300px'},
     ),
-        dcc.Link(html.Button('Submit', id='submit-val', n_clicks=0, style={'margin-top': '25px','display' :'inline-block'}), href='/'),
         dcc.Link("Go to Word Cloud", href="/page-2", style={'display': 'block', 'margin-top': '25px'}),
         html.Div(id='button-container'),
         html.Div(children=html.Center(children=[
