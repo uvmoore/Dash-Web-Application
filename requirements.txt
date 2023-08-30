@@ -93,6 +93,7 @@ spacy-legacy==3.0.10
 spacy-loggers==1.0.3
 srsly==2.4.5
 starlette==0.31.0
+staty==1.2.4
 stopwords==1.0.0
 tabula-py==2.7.0
 tenacity==8.0.1
