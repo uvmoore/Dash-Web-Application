@@ -9,6 +9,8 @@ import spacy
 import gensim
 from gensim import corpora
 from gensim.utils import simple_preprocess
+import nltk
+nltk.download('stopwords')
 from nltk.corpus import stopwords
 
 stopWords = stopwords.words('english')
